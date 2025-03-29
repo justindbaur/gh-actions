@@ -1,0 +1,51 @@
+# The start of a release indicates we need to cut a 
+# release/m.f branch, kick off a prerelease, and do
+# a version bump into main
+
+name: Start release
+on:
+  workflow_call: 
+    inputs:
+      current-version:
+        type: string
+        required: true
+        description: The version the application being released is.
+      release-branch-template:
+        type: string
+        default: "release/%version%"
+
+jobs:
+  start-release:
+    name: Start release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        # TODO: What inputs do we need
+      
+      - name: Create release branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const currentVersion = '${{ inputs.current-version }}';
+            const releaseBranchTemplate = '${{ inputs.release-branch-template }}';
+
+            // Configure Git
+            await exec.exec(`git config user.name "github-actions"`);
+            await exec.exec(`git config user.email "github-actions@github.com"`);
+
+            const versionParts = currentVersion.split('.');
+
+            if (versionParts.length <= 2) {
+               core.setFailed(`Invalid version format ${currentVersion}`);
+               return;
+            }
+
+            const partialVersion = `${versionParts[0]}.${versionParts[1]}`;
+
+            const releaseBranch = releaseBranchTemplate.replace("%version%", partialVersion);
+
+            await exec.exec(`git checkout -b ${releaseBranch}`);
+
+            await exec.exec(`git push --set-upstream origin HEAD:${releaseBranch}`);
+
